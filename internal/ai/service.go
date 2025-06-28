@@ -36,8 +36,8 @@ import (
 
 	"edge-insights/internal/types"
 
-	"github.com/sashabaranov/go-openai"
 	"github.com/pgvector/pgvector-go"
+	"github.com/sashabaranov/go-openai"
 )
 
 // AIService handles AI-powered analysis of IoT logs
@@ -99,14 +99,14 @@ func (s *AIService) SearchSimilarLogs(searchText string, limit int) (*types.Quer
 		return nil, fmt.Errorf("failed to generate embedding: %w", err)
 	}
 
-		// Step 2: Convert []float64 to []float32 (pgvector expects float32)
-		embedding32 := make([]float32, len(queryEmbedding))
-		for i, v := range queryEmbedding {
-			embedding32[i] = float32(v)
-		}
+	// Step 2: Convert []float64 to []float32 (pgvector expects float32)
+	embedding32 := make([]float32, len(queryEmbedding))
+	for i, v := range queryEmbedding {
+		embedding32[i] = float32(v)
+	}
 
-		// Step 3: Create pgvector vector
-		embeddingVec := pgvector.NewVector(embedding32)
+	// Step 3: Create pgvector vector
+	embeddingVec := pgvector.NewVector(embedding32)
 
 	// Step 2: Perform vector similarity search using pgvector
 	searchQuery := `
