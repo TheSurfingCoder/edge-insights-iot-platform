@@ -25,7 +25,7 @@ type QueryRequest struct {
 // QueryResponse represents the AI query response
 type QueryResponse struct {
 	Success bool      `json:"success"`
-	Result  string    `json:"result"`
+	Result  interface{}    `json:"result"`
 	Error   string    `json:"error,omitempty"`
 	Query   string    `json:"query"`
 	Time    time.Time `json:"time"`
@@ -39,4 +39,34 @@ type SearchResult struct {
 	ChunkSeq      int     `json:"chunk_seq"`
 	Chunk         string  `json:"chunk"`
 	Distance      float64 `json:"distance"`
+}
+
+type SearchResponse struct {
+	Results []SearchResult `json:"results"`
+	Count   int           `json:"count"`
+	Query   string        `json:"query"`
+}
+
+type SummaryResponse struct {
+	Summary     string   `json:"summary"`
+	TimeRange   string   `json:"time_range"`
+	LogCount    int      `json:"log_count"`
+	KeyInsights []string `json:"key_insights"`
+}
+
+// AnomalyResponse represents detected anomalies
+type AnomalyResponse struct {
+	Anomalies  []Anomaly `json:"anomalies"`
+	TotalFound int       `json:"total_found"`
+	TimeRange  string    `json:"time_range"`
+}
+
+// Anomaly represents a single detected anomaly
+type Anomaly struct {
+	Time      time.Time `json:"time"`
+	DeviceID  string    `json:"device_id"`
+	Type      string    `json:"type"`
+	Severity  string    `json:"severity"`
+	Message   string    `json:"message"`
+	Confidence float64  `json:"confidence"`
 }
