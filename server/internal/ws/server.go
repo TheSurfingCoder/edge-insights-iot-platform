@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"edge-insights/internal/ai"
 	"edge-insights/internal/db"
@@ -30,26 +31,76 @@ func NewServer(db *sql.DB) *Server {
 	}
 }
 
+
+func enableCORS(w http.ResponseWriter, r *http.Request) {
+    // Get allowed origins from environment variable
+    allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+    
+    if allowedOrigins == "" {
+        // Default to localhost for development
+        allowedOrigins = "http://localhost:3000,http://localhost:3001"
+    }
+    
+    // Parse the origins string (comma-separated)
+    origins := strings.Split(allowedOrigins, ",")
+    
+    // Get the requesting origin
+    origin := r.Header.Get("Origin")
+    
+    // Check if the requesting origin is in our allowed list
+    for _, allowedOrigin := range origins {
+        if strings.TrimSpace(allowedOrigin) == origin {
+            w.Header().Set("Access-Control-Allow-Origin", origin)
+            break
+        }
+    }
+    
+    w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    w.Header().Set("Access-Control-Allow-Credentials", "true")
+}
+
+//CORS middleware wrapper - handles all requests
+func corsMiddleware(handler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        // Handle preflight OPTIONS request
+        if r.Method == "OPTIONS" {
+            enableCORS(w, r)
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        // Enable CORS for all requests (GET, POST, etc.)
+        enableCORS(w, r)
+        
+        // Call the actual handler
+        handler(w, r)
+    }
+}
+
+
 func (s *Server) Start() error {
 	// WebSocket endpoint
 	http.HandleFunc("/ws", s.handler.HandleWebSocket)
 
-	// Health check endpoint
-	http.HandleFunc("/health", s.healthHandler)
+	 // Health check endpoint
+	 http.HandleFunc("/health", corsMiddleware(s.healthHandler))
 
-	// Log viewing endpoints
-	http.HandleFunc("/api/logs", s.logsHandler)
-	http.HandleFunc("/api/logs/device/", s.deviceLogsHandler)
+
+ // Log viewing endpoints (GET requests)
+ http.HandleFunc("/api/logs", corsMiddleware(s.logsHandler))
+ http.HandleFunc("/api/logs/device/", corsMiddleware(s.deviceLogsHandler))
+
 
 	log.Printf("Starting WebSocket server on port %s", s.port)
 	log.Printf("WebSocket endpoint: ws://localhost:%s/ws", s.port)
 	log.Printf("Health check: http://localhost:%s/health", s.port)
 	log.Printf("View logs: http://localhost:%s/api/logs", s.port)
 
-	http.HandleFunc("/api/ai/query", s.aiQueryHandler)
-	http.HandleFunc("/api/ai/summarize", s.aiSummarizeHandler)
-	http.HandleFunc("/api/ai/anomalies", s.aiAnomaliesHandler)
-	http.HandleFunc("/api/ai/search", s.aiSearchHandler)
+	http.HandleFunc("/api/ai/query", corsMiddleware(s.aiQueryHandler))
+    http.HandleFunc("/api/ai/summarize", corsMiddleware(s.aiSummarizeHandler))
+    http.HandleFunc("/api/ai/anomalies", corsMiddleware(s.aiAnomaliesHandler))
+    http.HandleFunc("/api/ai/search", corsMiddleware(s.aiSearchHandler))
 	log.Printf("Starting WebSocket server on port %s", s.port)
 	log.Printf("WebSocket endpoint: ws://localhost:%s/ws", s.port)
 	log.Printf("Health check: http://localhost:%s/health", s.port)
@@ -64,6 +115,8 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status": "healthy", "service": "edge-insights"}`))
 }
+
+
 
 func (s *Server) logsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
