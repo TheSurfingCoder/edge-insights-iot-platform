@@ -6,6 +6,28 @@ import AIQueryInterface from '@/components/AIQueryInterface'
 export default function Dashboard() {
   const [metrics, setMetrics] = useState({ recordsPerSecond: 0, totalLogs: 0 })
 
+  // Fetch metrics from your API
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const response = await fetch('https://edge-insights-iot-platform-production.up.railway.app/api/logs?limit=1')
+        const data = await response.json()
+        setMetrics({
+          recordsPerSecond: 0, // We'll implement this later
+          totalLogs: data.count || 0
+        })
+      } catch (error) {
+        console.error('Failed to fetch metrics:', error)
+      }
+    }
+
+    fetchMetrics()
+    
+    // Update metrics every 30 seconds
+    const interval = setInterval(fetchMetrics, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

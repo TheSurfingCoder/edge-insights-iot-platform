@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 
 interface Device {
   id: string
@@ -9,13 +8,13 @@ interface Device {
 }
 
 export default function DeviceStatus() {
-  const [devices, setDevices] = useState<Device[]>([
+  const devices: Device[] = [
     { id: 'device_001', type: 'temperature_sensor', location: 'warehouse_a', status: 'online', lastSeen: new Date().toISOString() },
     { id: 'device_002', type: 'humidity_sensor', location: 'warehouse_b', status: 'online', lastSeen: new Date().toISOString() },
     { id: 'device_003', type: 'motion_detector', location: 'office_floor_1', status: 'online', lastSeen: new Date().toISOString() },
     { id: 'device_004', type: 'camera', location: 'parking_lot', status: 'online', lastSeen: new Date().toISOString() },
     { id: 'device_005', type: 'controller', location: 'server_room', status: 'online', lastSeen: new Date().toISOString() },
-  ])
+  ]
 
   return (
     <div className="p-6">
