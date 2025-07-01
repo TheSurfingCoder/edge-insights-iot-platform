@@ -5,7 +5,7 @@ import AIQueryInterface from '@/components/AIQueryInterface'
 import TimeSeriesChart from '@/components/TimeSeriesChart'
 
 export default function Dashboard() {
-  const [chartData, setChartData] = useState<any[]>([])
+  const [chartData, setChartData] = useState<Record<string, unknown>[]>([])
   const [chartTitle, setChartTitle] = useState('')
   const [showChart, setShowChart] = useState(false)
   const [chartLoading, setChartLoading] = useState(false)

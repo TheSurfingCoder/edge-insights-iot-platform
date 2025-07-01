@@ -1,9 +1,31 @@
 import { useState } from 'react'
 import { ChartBarIcon, MagnifyingGlassIcon, LightBulbIcon } from '@heroicons/react/24/outline'
 
+interface SQLResult {
+  sql: string
+  explanation: string
+  result: Record<string, unknown>[]
+  row_count: number
+}
+
+interface LogEntry {
+  time: string
+  device_id: string
+  device_type: string
+  location: string
+  log_type: string
+  raw_value: string
+  unit: string
+  distance: number
+}
+
+interface SemanticResult {
+  relevant_logs: LogEntry[]
+}
+
 interface QueryResult {
   success: boolean
-  result: any
+  result: SQLResult | SemanticResult | Record<string, unknown>
   query: string
   time: string
   error?: string
@@ -19,7 +41,6 @@ export default function AIQueryInterface() {
   const [query, setQuery] = useState('')
   const [result, setResult] = useState<QueryResult | null>(null)
   const [loading, setLoading] = useState(false)
-  const [queryType, setQueryType] = useState<'auto' | 'data' | 'pattern'>('auto')
 
   // Query suggestions for users
   const querySuggestions: QuerySuggestion[] = [
@@ -90,7 +111,7 @@ export default function AIQueryInterface() {
       console.log('   - Result type:', typeof data.result?.result)
       console.log('   - Result length:', data.result?.result?.length)
       
-      if (data.success && data.result && data.result.sql && data.result.result) {
+      if (data.success && data.result && 'sql' in data.result && data.result.sql && 'result' in data.result && data.result.result) {
         console.log('📊 Chart Data Analysis:')
         console.log('   - Data type: text-to-SQL')
         console.log('   - Row count:', data.result.result.length)
@@ -123,7 +144,7 @@ export default function AIQueryInterface() {
     } catch (error) {
       setResult({
         success: false,
-        result: null,
+        result: {},
         query: query,
         time: new Date().toISOString(),
         error: (error as Error).message
@@ -135,7 +156,6 @@ export default function AIQueryInterface() {
 
   const handleSuggestionClick = (suggestion: QuerySuggestion) => {
     setQuery(suggestion.text)
-    setQueryType(suggestion.type)
   }
 
   const renderResult = () => {
@@ -151,7 +171,8 @@ export default function AIQueryInterface() {
     }
 
     // Check if it's a text-to-SQL result
-    if (result.result.sql) {
+    if ('sql' in result.result && result.result.sql) {
+      const sqlResult = result.result as SQLResult
       return (
         <div className="mt-6 space-y-4">
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
@@ -159,13 +180,13 @@ export default function AIQueryInterface() {
               <ChartBarIcon className="inline w-5 h-5 mr-2" />
               Data Query Results
             </h3>
-            <p className="text-blue-700 mb-3">{result.result.explanation}</p>
+            <p className="text-blue-700 mb-3">{sqlResult.explanation}</p>
             <details className="text-sm">
               <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
                 View Generated SQL
               </summary>
               <pre className="mt-2 p-2 bg-blue-100 rounded text-xs overflow-x-auto">
-                {result.result.sql}
+                {sqlResult.sql}
               </pre>
             </details>
           </div>
@@ -173,15 +194,15 @@ export default function AIQueryInterface() {
           <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
             <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
               <span className="text-sm font-medium text-gray-700">
-                Results ({result.result.row_count || 0} rows)
+                Results ({sqlResult.row_count || 0} rows)
               </span>
             </div>
             <div className="max-h-96 overflow-y-auto">
-              {result.result.result && result.result.result.length > 0 ? (
+              {sqlResult.result && sqlResult.result.length > 0 ? (
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      {Object.keys(result.result.result[0]).map(key => (
+                      {Object.keys(sqlResult.result[0]).map(key => (
                         <th key={key} className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           {key}
                         </th>
@@ -189,9 +210,9 @@ export default function AIQueryInterface() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {result.result.result.map((row: any, index: number) => (
+                    {sqlResult.result.map((row: Record<string, unknown>, index: number) => (
                       <tr key={index}>
-                        {Object.values(row).map((value: any, valueIndex: number) => (
+                        {Object.values(row).map((value: unknown, valueIndex: number) => (
                           <td key={valueIndex} className="px-4 py-2 text-sm text-gray-900">
                             {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                           </td>
@@ -213,8 +234,9 @@ export default function AIQueryInterface() {
     }
 
     // Check if it's a semantic search result
-    if (result.result.relevant_logs) {
-      const logs = result.result.relevant_logs;
+    if ('relevant_logs' in result.result && result.result.relevant_logs) {
+      const semanticResult = result.result as SemanticResult
+      const logs = semanticResult.relevant_logs;
       console.log('🔍 Semantic search results:', logs);
       console.log('🔍 First log entry:', logs[0]);
       console.log('🔍 First log keys:', Object.keys(logs[0]));
@@ -251,19 +273,19 @@ export default function AIQueryInterface() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {logs.map((row: any, index: number) => (
+                  {logs.map((row: LogEntry, index: number) => (
                     <tr key={index}>
                       {columns.map((key, valueIndex) => (
                         <td key={valueIndex} className={`px-4 py-2 text-sm ${
                           key === 'distance' ? 'font-medium' : 'text-gray-900'
                         } ${
-                          key === 'distance' && typeof row[key] === 'number' ? 
-                            (1 - row[key]) * 100 > 80 ? 'text-green-600' : 
-                            (1 - row[key]) * 100 > 60 ? 'text-yellow-600' : 'text-red-600' 
+                          key === 'distance' ? 
+                            (1 - row.distance) * 100 > 80 ? 'text-green-600' : 
+                            (1 - row.distance) * 100 > 60 ? 'text-yellow-600' : 'text-red-600' 
                           : ''
                         }`}>
                           {(() => {
-                            const value = row[key];
+                            const value = row[key as keyof LogEntry];
                             if (value === null || value === undefined) {
                               return 'N/A';
                             }

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { Chart, registerables } from 'chart.js'
+import { Chart, registerables, ChartDataset } from 'chart.js'
 
 Chart.register(...registerables)
 
 interface TimeSeriesChartProps {
-  data: any[]
+  data: Record<string, unknown>[]
   title: string
   type: 'line' | 'bar'
   height?: number
@@ -15,7 +15,7 @@ export default function TimeSeriesChart({ data, title, type = 'line', height = 3
   const chartInstance = useRef<Chart | null>(null)
 
   // Smart chart type detection
-  const detectChartType = (data: any[], numericColumns: string[]) => {
+  const detectChartType = (data: Record<string, unknown>[], numericColumns: string[]) => {
     if (!data || data.length === 0) return 'line'
     
     // Check if this looks like aggregated data (counts, totals)
@@ -99,7 +99,7 @@ export default function TimeSeriesChart({ data, title, type = 'line', height = 3
       
       if (!timeValue) return 'Unknown'
       
-      const date = new Date(timeValue)
+      const date = new Date(timeValue as string)
       
       // Smart time formatting based on data granularity
       if (timeColumnType === 'five_min_bucket' || timeColumnType?.includes('five_min')) {
@@ -117,7 +117,7 @@ export default function TimeSeriesChart({ data, title, type = 'line', height = 3
       }
     })
 
-    const datasets: any[] = []
+    const datasets: ChartDataset<'line' | 'bar'>[] = []
     
     // Enhanced numeric column detection for continuous aggregates
     const numericColumns = Object.keys(data[0]).filter(key => {
@@ -160,7 +160,7 @@ export default function TimeSeriesChart({ data, title, type = 'line', height = 3
         ]
         
         // Enhanced label formatting
-        let label = column
+        const label = column
           .replace(/_/g, ' ')
           .replace(/\b\w/g, l => l.toUpperCase())
           .replace('Avg Value', 'Average')
@@ -169,7 +169,7 @@ export default function TimeSeriesChart({ data, title, type = 'line', height = 3
         
         datasets.push({
           label,
-          data: data.map(row => row[column]),
+          data: data.map(row => row[column] as number),
           borderColor: colors[index % colors.length],
           backgroundColor: colors[index % colors.length] + '20',
           borderWidth: 2,
@@ -195,7 +195,7 @@ export default function TimeSeriesChart({ data, title, type = 'line', height = 3
             'rgb(239, 68, 68)',  // red
           ]
           
-          let label = column
+          const label = column
             .replace(/_/g, ' ')
             .replace(/\b\w/g, l => l.toUpperCase())
             .replace('Error Count', 'Errors')
@@ -205,7 +205,7 @@ export default function TimeSeriesChart({ data, title, type = 'line', height = 3
           
           datasets.push({
             label,
-            data: data.map(row => row[column]),
+            data: data.map(row => row[column] as number),
             borderColor: colors[index % colors.length],
             backgroundColor: colors[index % colors.length] + '20',
             borderWidth: 2,
