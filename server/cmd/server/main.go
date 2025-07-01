@@ -128,8 +128,9 @@ import (
 	"edge-insights/internal/db"
 	"edge-insights/internal/ws"
 
-	"github.com/joho/godotenv"
 	"edge-insights/internal/ai"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {

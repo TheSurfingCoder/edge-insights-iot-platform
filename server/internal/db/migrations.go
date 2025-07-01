@@ -19,6 +19,10 @@ func RunMigrations(db *sql.DB) error {
 	migrations := []string{
 		"migrations/001_create_device_logs_table.sql",
 		"migrations/002_create_embeddings_table.sql",
+		"migrations/003_create_sensor_readings_table.sql",
+		"migrations/004_remove_message_column.sql",
+		"migrations/005_add_log_type_to_sensor_readings.sql",
+		"migrations/008_add_message_to_sensor_readings.sql",
 	}
 
 	for _, migrationPath := range migrations {

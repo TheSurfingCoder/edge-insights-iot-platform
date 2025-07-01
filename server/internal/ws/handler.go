@@ -9,10 +9,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"edge-insights/internal/types"
+
+	"edge-insights/internal/db"
+
+	"github.com/gorilla/websocket"
 )
 
 // upgrader is a WebSocket upgrader that converts HTTP connections to WebSocket connections
@@ -25,12 +29,43 @@ var upgrader = websocket.Upgrader{
 
 // Handler manages WebSocket connections and processes IoT log messages
 type Handler struct {
-	db *sql.DB // Database connection for storing logs
+	db           *sql.DB
+	clients      map[*websocket.Conn]bool
+	clientsMutex sync.RWMutex
 }
 
 // NewHandler creates a new WebSocket handler with database connection
 func NewHandler(db *sql.DB) *Handler {
-	return &Handler{db: db}
+	return &Handler{
+		db:      db,
+		clients: make(map[*websocket.Conn]bool),
+	}
+}
+
+// broadcastToClients sends a message to all connected clients
+func (h *Handler) broadcastToClients(message interface{}) {
+	h.clientsMutex.RLock()
+
+	// Collect clients to remove
+	var clientsToRemove []*websocket.Conn
+
+	for client := range h.clients {
+		if err := client.WriteJSON(message); err != nil {
+			log.Printf("Error broadcasting to client: %v", err)
+			clientsToRemove = append(clientsToRemove, client)
+		}
+	}
+
+	h.clientsMutex.RUnlock()
+
+	// Remove failed clients
+	if len(clientsToRemove) > 0 {
+		h.clientsMutex.Lock()
+		for _, client := range clientsToRemove {
+			delete(h.clients, client)
+		}
+		h.clientsMutex.Unlock()
+	}
 }
 
 // HandleWebSocket manages the WebSocket connection lifecycle:
@@ -45,9 +80,21 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to upgrade connection: %v", err)
 		return
 	}
-	defer conn.Close() // Ensure connection is closed when function exits
 
-	log.Printf("New WebSocket connection established")
+	// Add client to the list of connected clients
+	h.clientsMutex.Lock()
+	h.clients[conn] = true
+	h.clientsMutex.Unlock()
+
+	// Remove client when connection closes
+	defer func() {
+		h.clientsMutex.Lock()
+		delete(h.clients, conn)
+		h.clientsMutex.Unlock()
+		conn.Close()
+	}()
+
+	log.Printf("New WebSocket connection established. Total clients: %d", len(h.clients))
 
 	// Main message processing loop
 	for {
@@ -82,8 +129,14 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Send success response back to client
+		// Send success response back to the sender
 		sendSuccess(conn, "Log stored successfully")
+
+		// Broadcast the log data to all connected clients for live feed
+		h.broadcastToClients(map[string]interface{}{
+			"type": "log_entry",
+			"data": logMsg,
+		})
 	}
 }
 
@@ -95,8 +148,8 @@ func validateLogMessage(log types.LogMessage) error {
 	if log.LogType == "" {
 		return fmt.Errorf("log_type is required")
 	}
-	if log.Message == "" {
-		return fmt.Errorf("message is required")
+	if log.LogType == "" {
+		return fmt.Errorf("LogType is required")
 	}
 	// If time is not provided, use current time
 	if log.Time.IsZero() {
@@ -107,15 +160,7 @@ func validateLogMessage(log types.LogMessage) error {
 
 // storeLog inserts a log message into the TimescaleDB device_logs table
 func (h *Handler) storeLog(log types.LogMessage) error {
-	query := `
-        INSERT INTO device_logs (time, device_id, log_type, message)
-        VALUES ($1, $2, $3, $4)
-    `
-
-	// Execute the SQL query with the log data
-	// $1, $2, $3, $4 are parameter placeholders for safe SQL execution
-	_, err := h.db.Exec(query, log.Time, log.DeviceID, log.LogType, log.Message)
-	return err
+	return db.StoreSensorReading(h.db, log)
 }
 
 // sendSuccess sends a success response to the WebSocket client

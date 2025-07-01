@@ -131,7 +131,7 @@ func (s *Server) logsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logs, err := db.GetRecentLogs(s.db, limit)
+	logs, err := db.GetRecentSensorReadings(s.db, limit)
 	if err != nil {
 		log.Printf("Error fetching logs: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
