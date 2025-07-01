@@ -20,10 +20,17 @@ export default async function handler(
   }
 
   try {
-    console.log('Proxying request to:', `${process.env.API_URL}/api/ai/query`)
+    // Ensure API_URL has proper protocol
+    let apiUrl = process.env.API_URL
+    if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+      apiUrl = `https://${apiUrl}`
+    }
+    
+    const fullUrl = `${apiUrl}/api/ai/query`
+    console.log('Proxying request to:', fullUrl)
     console.log('Request body:', req.body)
     
-    const response = await fetch(`${process.env.API_URL}/api/ai/query`, {
+    const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
