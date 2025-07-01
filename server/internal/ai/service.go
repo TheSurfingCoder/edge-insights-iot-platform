@@ -109,7 +109,7 @@ func (s *AIService) SearchSimilarLogs(searchText string, limit int) (*types.Quer
 	// Step 3: Create pgvector vector
 	embeddingVec := pgvector.NewVector(embedding32)
 
-	// Step 4: Perform vector similarity search using pgvector on sensor_readings
+	// Step 4: Perform vector similarity search using pgvector on sensor_readings_embeddings
 	searchQuery := `
 		SELECT 
 			time,
@@ -121,7 +121,7 @@ func (s *AIService) SearchSimilarLogs(searchText string, limit int) (*types.Quer
 			log_type,
 			COALESCE(message, '') as message,
 			embedding <=> $1 as distance
-		FROM sensor_readings
+		FROM sensor_readings_embeddings
 		WHERE embedding IS NOT NULL
 		ORDER BY distance ASC
 		LIMIT $2
@@ -129,8 +129,8 @@ func (s *AIService) SearchSimilarLogs(searchText string, limit int) (*types.Quer
 
 	// Log the semantic search query
 	log.Printf("🔍 SEMANTIC SEARCH:")
-	log.Printf("   Table Used: sensor_readings (RAW_DATA)")
-	log.Printf("   Reason: Vector similarity search requires raw data with embeddings")
+	log.Printf("   Table Used: sensor_readings_embeddings (EMBEDDINGS)")
+	log.Printf("   Reason: Vector similarity search now uses the new embeddings table")
 	log.Printf("   ---")
 
 	rows, err := s.db.Query(searchQuery, embeddingVec, limit)
