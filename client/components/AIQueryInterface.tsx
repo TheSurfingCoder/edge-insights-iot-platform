@@ -91,7 +91,7 @@ export default function AIQueryInterface() {
     window.dispatchEvent(loadingEvent)
     
     try {
-      const response = await fetch('http://localhost:8080/api/ai/query', {
+      const response = await fetch('/api/ai/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

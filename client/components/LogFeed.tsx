@@ -21,7 +21,13 @@ export default function LogFeed() {
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8080/ws')
+    // For WebSocket, we need to use the Railway URL directly since Next.js API routes can't handle WebSocket upgrades
+    // In development, use localhost; in production, this will need to be configured
+    const wsUrl = process.env.NODE_ENV === 'development' 
+      ? 'ws://localhost:8080/ws'
+      : `${process.env.NEXT_PUBLIC_WS_URL || 'wss://your-railway-app.railway.app'}/ws`
+    
+    const ws = new WebSocket(wsUrl)
     
     ws.onopen = () => {
       setConnected(true)
